@@ -1,0 +1,296 @@
+:root {
+  --ink: #1c2326;
+  --ink-card: #20292d;
+  --rule: rgba(255, 255, 255, 0.16);
+  --text: #eef2f0;
+  --text-soft: #c9d3cf;
+  --field-line: rgba(255, 255, 255, 0.5);
+  --focus: #7fb3b6;
+  --accent: #2f5d62;
+  --accent-dark: #254a4e;
+  --denied: #e8a598;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: "Public Sans", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2 {
+  font-family: "Newsreader", Georgia, serif;
+  font-weight: 500;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+
+/* Sign-in layout: left panel shows the ledger illustration, right panel shows the document texture */
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
+  background-color: var(--ink);
+}
+
+.brand-panel {
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(rgba(28, 35, 38, 0.55), rgba(28, 35, 38, 0.8)),
+    url("/brand-ledger.svg");
+  background-size: cover;
+  background-position: center;
+  color: var(--text);
+  padding: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3rem;
+}
+
+.brand-name {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.brand-statement {
+  font-family: "Newsreader", Georgia, serif;
+  font-size: 2.6rem;
+  line-height: 1.15;
+  max-width: 20ch;
+  margin: 0;
+}
+
+.rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+  max-width: 34rem;
+}
+
+.rules li {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--text-soft);
+  font-size: 0.95rem;
+}
+
+/* Form side: the document texture fills the panel behind the card */
+.form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2.5rem;
+  background-color: var(--ink);
+  background-image:
+    linear-gradient(rgba(28, 35, 38, 0.35), rgba(28, 35, 38, 0.6)),
+    url("/form-texture.svg");
+  background-size: cover;
+  background-position: center;
+}
+
+/* Login card: photo band at the top, solid surface for the form below */
+.form-inner {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  max-width: 22rem;
+  padding: 12.5rem 2.25rem 2rem;
+  background-color: var(--ink-card);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+/* Photo band: shows the illustration across the top of the card */
+.form-inner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 11rem;
+  z-index: -2;
+  background-image: url("/brand-character.png");
+  background-size: cover;
+  background-position: center 30%;
+  background-repeat: no-repeat;
+}
+
+/* Fade from the photo into the solid card, so the band blends in and the form stays readable */
+.form-inner::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 11rem;
+  z-index: -1;
+  background: linear-gradient(
+    rgba(28, 35, 38, 0.25) 0%,
+    rgba(28, 35, 38, 0.55) 60%,
+    var(--ink-card) 100%
+  );
+}
+
+.form-title {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.form-note {
+  color: var(--text-soft);
+  font-size: 0.925rem;
+  margin: 0 0 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.field {
+  margin-bottom: 1.75rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--text);
+}
+
+.field input {
+  width: 100%;
+  padding: 0.5rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--field-line);
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--text);
+}
+
+.field input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--focus);
+  padding-bottom: calc(0.5rem - 1px);
+}
+
+.field input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.field input[aria-invalid="true"] {
+  border-bottom-color: var(--denied);
+}
+
+.password-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.password-row input {
+  flex: 1;
+}
+
+.toggle {
+  flex: 0 0 auto;
+  padding: 0.5rem 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: var(--focus);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.toggle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.error {
+  color: var(--denied);
+  border-left: 3px solid var(--denied);
+  padding: 0.35rem 0 0.35rem 0.75rem;
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+}
+
+.submit {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.submit:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.submit:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.form-footer {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.form-footer p {
+  margin: 0;
+}
+
+@media (max-width: 800px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    padding: 2rem 1.25rem 0;
+    gap: 1.5rem;
+  }
+
+  .brand-statement {
+    font-size: 1.8rem;
+  }
+
+  .form-panel {
+    padding: 2rem 1.25rem 3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

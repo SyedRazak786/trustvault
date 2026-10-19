@@ -1,0 +1,19 @@
+# secrets and local config
+.env
+*.env.local
+
+# uploaded files and storage (never commit document content)
+/storage/
+/files/
+*.upload
+
+# build output
+backend/target/
+frontend/node_modules/
+frontend/dist/
+
+# IDE and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
