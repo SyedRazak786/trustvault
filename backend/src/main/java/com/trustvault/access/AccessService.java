@@ -48,6 +48,19 @@ public class AccessService {
         }
     }
 
+    // Only the owner may grant, revoke or view grants. A grant holder with EDIT cannot share further.
+    public void requireOwner(long userId, long documentId, String action) {
+        Integer n = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM documents d
+                JOIN users u ON u.id = ? AND u.active = TRUE
+                WHERE d.id = ? AND d.deleted = FALSE AND d.owner_id = u.id""",
+                Integer.class, userId, documentId);
+        if (n == null || n == 0) {
+            audit.record(userId, action, documentId, false, "not owner");
+            throw new ResponseStatusException(NOT_FOUND);
+        }
+    }
+
     // The list uses the same visibility rule as can(), so search and list cannot show more than downloads allow.
     public List<Map<String, Object>> listVisible(long userId) {
         return jdbc.queryForList("""
