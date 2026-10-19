@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -134,5 +135,17 @@ public class DocumentController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename((String) doc.get("name")).build().toString())
                 .body(new FileSystemResource(file));
+    }
+
+    // Owner only. Soft delete: the document disappears from every list and download,
+    // but its record and file stay so the audit trail still points to something real.
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthUser user, @PathVariable long id) {
+        access.requireOwner(user.id(), id, "DELETE");
+
+        jdbc.update("UPDATE documents SET deleted = TRUE WHERE id = ?", id);
+
+        audit.record(user.id(), "DELETE", id, true, "soft-deleted");
+        return ResponseEntity.noContent().build();
     }
 }
