@@ -114,7 +114,7 @@ export default function Login() {
           </form>
 
           <div className="form-footer">
-            <p>Every sign-in attempt is recorded. Need an account? Ask your administrator.</p>
+            <p>Every sign-in attempt is recorded. <a className="link" href="/signup">Create an account</a></p>
           </div>
         </div>
       </main>

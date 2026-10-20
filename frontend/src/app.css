@@ -158,3 +158,68 @@ th { color: var(--text-soft); font-size: 0.8rem; font-weight: 600; }
 @media (max-width: 640px) {
   .who span:first-child { display: none; }
 }
+
+/* Account menu: circular avatar and dropdown */
+.account { position: relative; margin-left: 1rem; }
+
+.avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--focus);
+  background: rgba(127, 179, 182, 0.15);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.avatar:hover { background: rgba(127, 179, 182, 0.28); }
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  min-width: 14rem;
+  background: #161f23;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  padding: 0.5rem 0;
+  z-index: 20;
+}
+
+.menu-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.6rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 0.4rem;
+}
+
+.menu-email { font-size: 0.85rem; color: var(--text-soft); word-break: break-all; }
+
+.menu a,
+.menu-signout {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 1rem;
+  text-align: left;
+  color: var(--text);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.menu a:hover,
+.menu-signout:hover { background: rgba(127, 179, 182, 0.12); }
+
+.menu-signout { color: var(--denied); }
+
+/* FAQ */
+.faq { border-bottom: 1px solid var(--rule); padding: 0.75rem 0; }
+.faq summary { cursor: pointer; font-weight: 600; }
+.faq p { margin: 0.6rem 0 0; color: var(--text-soft); }

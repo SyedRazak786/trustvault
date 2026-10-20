@@ -106,3 +106,35 @@ function statusMessage(status: number): string {
       return "Something went wrong. Try again.";
   }
 }
+export type Profile = {
+  id: number;
+  email: string;
+  role: "ADMIN" | "OWNER" | "VIEWER";
+  display_name: string | null;
+  phone: string | null;
+};
+
+export function signup(email: string, password: string, displayName: string): Promise<{ id: number }> {
+  return api("/api/auth/signup", {
+    method: "POST",
+    body: JSON.stringify({ email, password, displayName }),
+  });
+}
+
+export function getProfile(): Promise<Profile> {
+  return api<Profile>("/api/account/me");
+}
+
+export function updateProfile(displayName: string, phone: string): Promise<Profile> {
+  return api<Profile>("/api/account/me", {
+    method: "PUT",
+    body: JSON.stringify({ displayName, phone }),
+  });
+}
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  return api<void>("/api/account/password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
