@@ -1,5 +1,8 @@
 package com.trustvault.config;
 
+import com.trustvault.auth.JwtAuthFilter;
+import com.trustvault.auth.JwtService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -7,11 +10,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import com.trustvault.auth.JwtAuthFilter;
-import com.trustvault.auth.JwtService;
-
-import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -27,7 +25,7 @@ public class SecurityConfig {
             .exceptionHandling(e -> e.authenticationEntryPoint(
                     (request, response, ex) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/error").permitAll()
+                .requestMatchers("/api/auth/login", "/api/auth/signup", "/error").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(new JwtAuthFilter(jwt), UsernamePasswordAuthenticationFilter.class);
         return http.build();
