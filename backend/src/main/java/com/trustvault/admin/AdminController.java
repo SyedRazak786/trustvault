@@ -26,8 +26,27 @@ public class AdminController {
         this.audit = audit;
     }
 
-    // Recent activity across all documents. Administrators see who did what and when,
-    // but this endpoint returns no document contents.
+    // Metadata only: name, owner, category, size and dates. No contents, and no download or share links.
+    // The search matches name or category.
+    @GetMapping("/documents")
+    public ResponseEntity<?> documents(@AuthenticationPrincipal AuthUser user,
+                                       @RequestParam(value = "q", required = false) String q) {
+        if (!isAdmin(user, "ADMIN_VIEW_DOCUMENTS")) {
+            return forbidden();
+        }
+        String pattern = (q == null || q.isBlank()) ? "%" : "%" + q.trim() + "%";
+        var rows = jdbc.queryForList("""
+                SELECT d.id, d.name, d.category, d.content_type, d.size_bytes, d.created_at,
+                       d.deleted, owner.email AS owner
+                FROM documents d
+                JOIN users owner ON owner.id = d.owner_id
+                WHERE (d.name LIKE ? OR d.category LIKE ?)
+                ORDER BY d.created_at DESC
+                LIMIT 500""", pattern, pattern);
+        audit.record(user.id(), "ADMIN_VIEW_DOCUMENTS", null, true, "metadata list");
+        return ResponseEntity.ok(rows);
+    }
+
     @GetMapping("/activity")
     public ResponseEntity<?> activity(@AuthenticationPrincipal AuthUser user,
                                       @RequestParam(value = "limit", defaultValue = "100") int limit) {
@@ -41,7 +60,6 @@ public class AdminController {
                 ORDER BY a.id DESC LIMIT ?""", clamp(limit)));
     }
 
-    // Permission changes only: every grant and revoke, including the owner who made it.
     @GetMapping("/permissions")
     public ResponseEntity<?> permissions(@AuthenticationPrincipal AuthUser user,
                                          @RequestParam(value = "limit", defaultValue = "100") int limit) {
@@ -56,7 +74,6 @@ public class AdminController {
                 ORDER BY a.id DESC LIMIT ?""", clamp(limit)));
     }
 
-    // Recomputes the whole audit hash chain and reports the first row that does not match.
     @GetMapping("/audit/verify")
     public ResponseEntity<?> verify(@AuthenticationPrincipal AuthUser user) {
         if (!isAdmin(user, "ADMIN_VERIFY_AUDIT")) {

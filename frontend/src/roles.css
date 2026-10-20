@@ -1,0 +1,33 @@
+/* Role backgrounds: each SVG sits under a dark overlay so the text stays readable. */
+.app {
+  background-color: #0e1518;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.theme-owner {
+  background-image:
+    linear-gradient(rgba(14, 21, 24, 0.6), rgba(14, 21, 24, 0.8)),
+    url("/bg-owner.svg");
+}
+
+.theme-viewer {
+  background-image:
+    linear-gradient(rgba(14, 21, 24, 0.82), rgba(14, 21, 24, 0.93)),
+    url("/bg-viewer.svg");
+}
+
+.theme-admin {
+  background-image:
+    linear-gradient(rgba(14, 21, 24, 0.82), rgba(14, 21, 24, 0.93)),
+    url("/bg-admin.svg");
+}
+
+/* Let the background show through the header, with a soft blur. */
+.app .topbar {
+  background: rgba(14, 21, 24, 0.7);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#2f6b70" stroke-opacity="0.18" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="800" fill="#0e1518"/>
+  <rect width="1200" height="800" fill="url(#grid)"/>
+
+  <!-- filing cabinet of folders: solid dark shapes with a clear outline -->
+  <g fill="#14242a" stroke="#8cc4c7" stroke-opacity="0.55" stroke-width="2">
+    <!-- back folder -->
+    <path d="M740 240h130l22 28h250v330H740z"/>
+    <!-- middle folder -->
+    <path d="M760 300h380v270H760z"/>
+    <!-- front folder -->
+    <path d="M780 350h360v240H780z"/>
+  </g>
+
+  <!-- document tabs on the front folder -->
+  <g fill="none" stroke="#8cc4c7" stroke-opacity="0.5" stroke-width="2">
+    <path d="M812 400h296M812 440h250M812 480h200"/>
+  </g>
+
+  <!-- upload arrow: the owner adds documents -->
+  <g fill="none" stroke="#8cc4c7" stroke-opacity="0.6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M940 170v-80M906 124l34-34 34 34"/>
+  </g>
+</svg>
