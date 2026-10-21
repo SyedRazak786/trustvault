@@ -181,6 +181,29 @@ public class DocumentController {
                 .body(new FileSystemResource(file));
     }
 
+    // File DNA, visible to anyone allowed to read the document: recalculates the fingerprint of the stored file
+    // and compares it with the one recorded at upload. It changes nothing and does not count as a download.
+    @GetMapping("/{id}/verify")
+    public ResponseEntity<?> verify(@AuthenticationPrincipal AuthUser user, @PathVariable long id)
+            throws IOException, NoSuchAlgorithmException {
+        access.require(user.id(), id, Permission.READ, "VERIFY");
+
+        Map<String, Object> doc = jdbc.queryForMap(
+                "SELECT storage_key, sha256 FROM documents WHERE id = ?", id);
+        Path file = storageRoot.resolve((String) doc.get("storage_key")).normalize();
+        if (!file.startsWith(storageRoot) || !file.toFile().isFile()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+
+        String expected = (String) doc.get("sha256");
+        boolean intact = expected != null && fingerprint(Files.readAllBytes(file)).equals(expected);
+        String result = expected == null ? "no fingerprint recorded (uploaded before File DNA)"
+                : intact ? "matches the original upload" : "changed since upload";
+
+        audit.record(user.id(), "VERIFY", id, intact, "file fingerprint " + result);
+        return ResponseEntity.ok(Map.of("documentId", id, "intact", intact, "result", result));
+    }
+
     // Owner only. Soft delete: the document disappears from every list and download,
     // but its record and file stay so the audit trail still points to something real.
     @DeleteMapping("/{id}")

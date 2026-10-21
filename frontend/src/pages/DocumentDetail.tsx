@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, downloadDocument, errorMessage } from "../api/client";
+import { api, downloadDocument, errorMessage, verifyDocument, type Verification } from "../api/client";
 import { getSession } from "../auth/session";
 import Layout from "../components/Layout";
 import TrustTrail from "../components/TrustTrail";
@@ -18,6 +18,9 @@ export default function DocumentDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // File DNA: the result of the last "Verify file" check, if one has been run.
+  const [verification, setVerification] = useState<Verification | null>(null);
 
   // The grants list only loads for the owner of this document, so a successful load means "you own it".
   const [grants, setGrants] = useState<Grant[] | null>(null);
@@ -65,6 +68,16 @@ export default function DocumentDetail() {
     setError(null);
     try {
       await downloadDocument(doc.id, doc.name);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  // Asks the server to recalculate the file's fingerprint and compare it with the one recorded at upload.
+  async function onVerify() {
+    setError(null);
+    try {
+      setVerification(await verifyDocument(docId));
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -145,6 +158,23 @@ export default function DocumentDetail() {
             <p className="muted">
               Category: {doc.category} · {formatSize(doc.size_bytes)} · Uploaded {formatDate(doc.created_at)}
             </p>
+          </section>
+
+          <section className="panel">
+            <h2>File check</h2>
+            <p className="muted">
+              Confirms the stored file still matches the fingerprint recorded when it was uploaded.
+            </p>
+            <button type="button" className="btn btn-quiet" onClick={() => void onVerify()}>
+              Verify file
+            </button>
+            {verification && (
+              <p className={verification.intact ? "notice" : "error"} role="status">
+                {verification.intact
+                  ? "This file matches the original upload."
+                  : `This file has changed since it was uploaded (${verification.result}).`}
+              </p>
+            )}
           </section>
 
           {isOwner && (

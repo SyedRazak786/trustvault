@@ -33,13 +33,13 @@ public class TrailController {
     }
 
     @GetMapping
-    public ResponseEntity<?> trail(@org.springframework.security.core.annotation.AuthenticationPrincipal AuthUser user,
-                                   @PathVariable long id) {
+    public ResponseEntity<?> trail(@AuthenticationPrincipal AuthUser user, @PathVariable long id) {
         boolean admin = "ADMIN".equals(user.role());
         boolean owner = !admin && access.isOwnerOf(user.id(), id);
         if (!admin && !owner) {
             audit.record(user.id(), "VIEW_TRAIL", id, false, "not owner or administrator");
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "This document is not available to you."));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "This document is not available to you."));
         }
 
         List<Map<String, Object>> events = jdbc.queryForList("""

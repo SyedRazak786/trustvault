@@ -106,6 +106,7 @@ function statusMessage(status: number): string {
       return "Something went wrong. Try again.";
   }
 }
+
 export type Profile = {
   id: number;
   email: string;
@@ -177,4 +178,14 @@ export type Trail = {
 
 export function getTrail(documentId: number): Promise<Trail> {
   return api<Trail>(`/api/documents/${documentId}/trail`);
+}
+
+export type Verification = {
+  documentId: number;
+  intact: boolean;
+  result: string;
+};
+
+export function verifyDocument(id: number): Promise<Verification> {
+  return api<Verification>(`/api/documents/${id}/verify`);
 }
