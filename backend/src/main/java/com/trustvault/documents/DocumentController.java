@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,12 +63,12 @@ public class DocumentController {
     }
 
     // Owners only. The file type comes from the file's bytes, the stored name is a random key,
-    // and every upload and refusal is recorded.
+    // a SHA-256 fingerprint is recorded for later integrity checks, and every upload and refusal is audited.
     @PostMapping
     public ResponseEntity<?> upload(@AuthenticationPrincipal AuthUser user,
                                     @RequestParam("file") MultipartFile file,
                                     @RequestParam(value = "category", required = false) String category)
-            throws IOException {
+            throws IOException, NoSuchAlgorithmException {
 
         if (!"OWNER".equals(user.role())) {
             audit.record(user.id(), "UPLOAD", null, false, "role " + user.role() + " may not upload");
@@ -93,6 +96,9 @@ public class DocumentController {
         String name = validator.displayName(file.getOriginalFilename(), type.get().extension());
         String safeCategory = validator.cleanCategory(category);
 
+        // The fingerprint is calculated by the server from the bytes it saves, never from anything the browser sends.
+        String fingerprint = fingerprint(data);
+
         // The storage name is a random UUID, never the uploaded name. The path must stay inside the storage root.
         String key = UUID.randomUUID().toString();
         Path target = storageRoot.resolve(key).normalize();
@@ -103,9 +109,9 @@ public class DocumentController {
         Files.write(target, data, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
         jdbc.update("""
-                INSERT INTO documents (owner_id, name, category, storage_key, content_type, size_bytes)
-                VALUES (?, ?, ?, ?, ?, ?)""",
-                user.id(), name, safeCategory, key, type.get().contentType(), data.length);
+                INSERT INTO documents (owner_id, name, category, storage_key, content_type, size_bytes, sha256)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                user.id(), name, safeCategory, key, type.get().contentType(), data.length, fingerprint);
 
         long id = jdbc.queryForObject("SELECT id FROM documents WHERE storage_key = ?", Long.class, key);
         audit.record(user.id(), "UPLOAD", id, true, "uploaded " + type.get().contentType());
@@ -116,15 +122,24 @@ public class DocumentController {
 
     @GetMapping("/{id}/download")
     public ResponseEntity<FileSystemResource> download(@AuthenticationPrincipal AuthUser user,
-                                                       @PathVariable long id) {
+                                                       @PathVariable long id)
+            throws IOException, NoSuchAlgorithmException {
         access.require(user.id(), id, Permission.READ, "DOWNLOAD");
 
         Map<String, Object> doc = jdbc.queryForMap(
-                "SELECT storage_key, name, content_type FROM documents WHERE id = ?", id);
+                "SELECT storage_key, name, content_type, sha256 FROM documents WHERE id = ?", id);
 
         // The storage key is a server-generated UUID, never user input. The path must stay inside the storage root.
         Path file = storageRoot.resolve((String) doc.get("storage_key")).normalize();
         if (!file.startsWith(storageRoot) || !file.toFile().isFile()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+
+        // File DNA: the bytes on disk must still match the fingerprint recorded at upload.
+        // A mismatch means the stored file changed, so the download is refused and the event is recorded.
+        String expected = (String) doc.get("sha256");
+        if (expected != null && !fingerprint(Files.readAllBytes(file)).equals(expected)) {
+            audit.record(user.id(), "DOWNLOAD", id, false, "file integrity check failed");
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
 
@@ -147,5 +162,9 @@ public class DocumentController {
 
         audit.record(user.id(), "DELETE", id, true, "soft-deleted");
         return ResponseEntity.noContent().build();
+    }
+
+    private static String fingerprint(byte[] data) throws NoSuchAlgorithmException {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
     }
 }
