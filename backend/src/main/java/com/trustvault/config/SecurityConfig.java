@@ -25,7 +25,9 @@ public class SecurityConfig {
             .exceptionHandling(e -> e.authenticationEntryPoint(
                     (request, response, ex) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/signup", "/error").permitAll()
+                // Public endpoints: sign-in, sign-up and password reset (which never reveals whether an account exists).
+                .requestMatchers("/api/auth/login", "/api/auth/signup",
+                        "/api/auth/reset/request", "/api/auth/reset/confirm", "/error").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(new JwtAuthFilter(jwt), UsernamePasswordAuthenticationFilter.class);
         return http.build();

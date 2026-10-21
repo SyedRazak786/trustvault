@@ -12,7 +12,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const themeClass = session ? `theme-${session.role.toLowerCase()}` : "";
   const initial = (session?.email ?? "?").charAt(0).toUpperCase();
 
-  // Close the menu when clicking outside it, or pressing Escape.
+  // Close the account menu when clicking outside it, or pressing Escape.
   useEffect(() => {
     function onDown(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
@@ -31,52 +31,76 @@ export default function Layout({ children }: { children: ReactNode }) {
   function signOut() {
     setSession(null);
     setMenuOpen(false);
-    navigate("/login", { replace: true });
+    navigate("/welcome", { replace: true });
   }
 
   return (
     <div className={`app ${themeClass}`}>
       <header className="topbar">
-        <Link to="/" className="brand">TrustVault</Link>
+        <Link to={session ? "/" : "/welcome"} className="brand">TrustVault</Link>
+
         <nav>
-          <Link to={isAdmin ? "/admin/documents" : "/"}>Documents</Link>
-          {!isAdmin && <Link to="/shared">Shared with me</Link>}
-          {isAdmin && <Link to="/admin">Activity</Link>}
+          {session ? (
+            <>
+              <Link to={isAdmin ? "/admin/documents" : "/"}>Documents</Link>
+              {!isAdmin && <Link to="/shared">Shared with me</Link>}
+              {isAdmin && <Link to="/admin">Activity</Link>}
+            </>
+          ) : (
+            <Link to="/how-it-works">How it works</Link>
+          )}
           <Link to="/about">About</Link>
+          <Link to="/security">Security</Link>
           <Link to="/contact">Contact</Link>
+          <Link to="/help">Help</Link>
         </nav>
 
-        <div className="account" ref={menuRef}>
-          <button
-            type="button"
-            className="avatar"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            aria-label="Account menu"
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {initial}
-          </button>
+        {session ? (
+          <div className="account" ref={menuRef}>
+            <button
+              type="button"
+              className="avatar"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Account menu"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {initial}
+            </button>
 
-          {menuOpen && (
-            <div className="menu" role="menu">
-              <div className="menu-head">
-                <span className="menu-email">{session?.email}</span>
-                <span className="role">{session?.role}</span>
+            {menuOpen && (
+              <div className="menu" role="menu">
+                <div className="menu-head">
+                  <span className="menu-email">{session.email}</span>
+                  <span className="role">{session.role}</span>
+                </div>
+                <Link role="menuitem" to="/profile" onClick={() => setMenuOpen(false)}>Profile</Link>
+                {!isAdmin && (
+                  <Link role="menuitem" to="/shared" onClick={() => setMenuOpen(false)}>Shared with me</Link>
+                )}
+                <Link role="menuitem" to="/help" onClick={() => setMenuOpen(false)}>Help and support</Link>
+                <button role="menuitem" type="button" className="menu-signout" onClick={signOut}>
+                  Sign out
+                </button>
               </div>
-              <Link role="menuitem" to="/profile" onClick={() => setMenuOpen(false)}>Profile</Link>
-              {!isAdmin && (
-                <Link role="menuitem" to="/shared" onClick={() => setMenuOpen(false)}>Shared with me</Link>
-              )}
-              <Link role="menuitem" to="/help" onClick={() => setMenuOpen(false)}>Help and support</Link>
-              <button role="menuitem" type="button" className="menu-signout" onClick={signOut}>
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="guest-actions">
+            <Link to="/login" className="btn btn-quiet">Sign in</Link>
+            <Link to="/signup" className="btn">Create account</Link>
+          </div>
+        )}
       </header>
+
       <main className="content">{children}</main>
+
+      <footer className="site-footer">
+        <span>TrustVault, a project by Syed Razak · Guntur, Andhra Pradesh, India</span>
+        <span>
+          <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
+        </span>
+      </footer>
     </div>
   );
 }
