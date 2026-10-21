@@ -1,5 +1,5 @@
 import Layout from "../components/Layout";
-
+import BackHome from "../components/BackHome";
 export default function Privacy() {
   return (
     <Layout>
@@ -52,6 +52,7 @@ export default function Privacy() {
           </p>
         </section>
       </div>
+      <BackHome />
     </Layout>
   );
 }

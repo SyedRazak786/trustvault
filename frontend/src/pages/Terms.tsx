@@ -1,5 +1,5 @@
 import Layout from "../components/Layout";
-
+import BackHome from "../components/BackHome";
 export default function Terms() {
   return (
     <Layout>
@@ -49,6 +49,7 @@ export default function Terms() {
           </p>
         </section>
       </div>
+      <BackHome />
     </Layout>
   );
 }

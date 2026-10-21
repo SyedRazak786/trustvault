@@ -1,4 +1,5 @@
 import Layout from "../components/Layout";
+import BackHome from "../components/BackHome";
 
 export default function Security() {
   return (
@@ -55,6 +56,7 @@ export default function Security() {
           </p>
         </section>
       </div>
+      <BackHome />
     </Layout>
   );
 }

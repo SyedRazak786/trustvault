@@ -1,4 +1,5 @@
 import Layout from "../components/Layout";
+import BackHome from "../components/BackHome";
 
 const FAQ = [
   {
@@ -53,6 +54,7 @@ export default function Help() {
         </p>
         <p className="muted">Support replies are sent within two working days.</p>
       </section>
+      <BackHome />
     </Layout>
   );
 }

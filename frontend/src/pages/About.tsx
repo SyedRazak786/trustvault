@@ -1,4 +1,5 @@
 import Layout from "../components/Layout";
+import BackHome from "../components/BackHome";
 
 export default function About() {
   return (
@@ -20,6 +21,7 @@ export default function About() {
         <p><strong>Viewers</strong> see and download only what has been shared with them.</p>
         <p><strong>Administrators</strong> review activity, permission changes and the audit chain, and see document details. They cannot read document contents.</p>
       </section>
+      <BackHome />
     </Layout>
   );
 }

@@ -1,4 +1,5 @@
 import Layout from "../components/Layout";
+import BackHome from "../components/BackHome";
 
 // Map centred on Guntur, Andhra Pradesh. OpenStreetMap needs no API key.
 const MAP_URL =
@@ -36,6 +37,7 @@ export default function Contact() {
           The map is provided by OpenStreetMap. Loading it sends your IP address to OpenStreetMap.
         </p>
       </section>
+      <BackHome />
     </Layout>
   );
 }

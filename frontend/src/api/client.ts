@@ -138,3 +138,24 @@ export function changePassword(currentPassword: string, newPassword: string): Pr
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 }
+
+export function requestPasswordReset(email: string): Promise<{ message: string }> {
+  return api("/api/auth/reset/request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  return api<void>("/api/auth/reset/confirm", {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+
+export function askAssistant(text: string): Promise<{ answer: string; links: string[] }> {
+  return api("/api/assistant/chat", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+}

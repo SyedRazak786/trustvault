@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
+import BackHome from "../components/BackHome";
 
 export default function HowItWorks() {
   return (
@@ -52,6 +53,7 @@ export default function HowItWorks() {
           <Link to="/signup" className="link">Create an account</Link> or <Link to="/security" className="link">read how security works</Link>.
         </p>
       </div>
+      <BackHome />
     </Layout>
   );
 }

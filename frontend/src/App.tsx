@@ -19,6 +19,7 @@ import SharedWithMe from "./pages/SharedWithMe";
 import SignUp from "./pages/SignUp";
 import Terms from "./pages/Terms";
 import Welcome from "./pages/Welcome";
+import ForgotPassword from "./pages/ForgotPassword";
 
 // Visitors see the welcome page. Signed-in users go to their documents; admins go to the metadata list.
 function HomeRoute() {
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Home decides between the welcome page and the signed-in home */}
         <Route path="/" element={<HomeRoute />} />

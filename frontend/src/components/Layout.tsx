@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getSession, setSession } from "../auth/session";
+import Assistant from "./Assistant";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
@@ -37,7 +38,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className={`app ${themeClass}`}>
       <header className="topbar">
-        <Link to={session ? "/" : "/welcome"} className="brand">TrustVault</Link>
+        {/* The name always returns to the home page, whether or not someone is signed in. */}
+        <Link to="/welcome" className="brand">TrustVault</Link>
 
         <nav>
           {session ? (
@@ -47,7 +49,10 @@ export default function Layout({ children }: { children: ReactNode }) {
               {isAdmin && <Link to="/admin">Activity</Link>}
             </>
           ) : (
-            <Link to="/how-it-works">How it works</Link>
+            <>
+              <Link to="/welcome">Home</Link>
+              <Link to="/how-it-works">How it works</Link>
+            </>
           )}
           <Link to="/about">About</Link>
           <Link to="/security">Security</Link>
@@ -94,6 +99,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       </header>
 
       <main className="content">{children}</main>
+
+      <Assistant />
 
       <footer className="site-footer">
         <span>TrustVault, a project by Syed Razak · Guntur, Andhra Pradesh, India</span>
