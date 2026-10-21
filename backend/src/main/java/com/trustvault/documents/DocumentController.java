@@ -1,11 +1,13 @@
 package com.trustvault.documents;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,7 @@ import com.trustvault.access.AccessService;
 import com.trustvault.access.AccessService.Permission;
 import com.trustvault.audit.AuditService;
 import com.trustvault.auth.AuthUser;
+import com.trustvault.privacy.PrivacyScanner;
 import com.trustvault.upload.UploadValidator;
 
 @RestController
@@ -45,15 +48,17 @@ public class DocumentController {
     private final AccessService access;
     private final AuditService audit;
     private final UploadValidator validator;
+    private final PrivacyScanner privacy;
     private final Path storageRoot;
 
     public DocumentController(JdbcTemplate jdbc, AccessService access, AuditService audit,
-                              UploadValidator validator,
+                              UploadValidator validator, PrivacyScanner privacy,
                               @Value("${trustvault.storage-root}") String storageRoot) {
         this.jdbc = jdbc;
         this.access = access;
         this.audit = audit;
         this.validator = validator;
+        this.privacy = privacy;
         this.storageRoot = Path.of(storageRoot).toAbsolutePath().normalize();
     }
 
@@ -63,7 +68,8 @@ public class DocumentController {
     }
 
     // Owners only. The file type comes from the file's bytes, the stored name is a random key,
-    // a SHA-256 fingerprint is recorded for later integrity checks, and every upload and refusal is audited.
+    // a SHA-256 fingerprint is recorded for File DNA, text is scanned for sensitive patterns (Privacy Guardian),
+    // and every upload and refusal is audited.
     @PostMapping
     public ResponseEntity<?> upload(@AuthenticationPrincipal AuthUser user,
                                     @RequestParam("file") MultipartFile file,
@@ -116,8 +122,26 @@ public class DocumentController {
         long id = jdbc.queryForObject("SELECT id FROM documents WHERE storage_key = ?", Long.class, key);
         audit.record(user.id(), "UPLOAD", id, true, "uploaded " + type.get().contentType());
 
+        // Privacy Guardian: text uploads are scanned for sensitive patterns. The findings are shown to the
+        // owner, who decides whether to share. Nothing is blocked, and the stored file is not changed.
+        List<Map<String, Object>> warnings = new ArrayList<>();
+        String scanNote;
+        if ("txt".equals(type.get().extension())) {
+            String text = new String(data, StandardCharsets.UTF_8);
+            for (PrivacyScanner.Finding f : privacy.scan(text)) {
+                warnings.add(Map.of("kind", f.kind(), "count", f.count()));
+            }
+            scanNote = "Text scanned for sensitive patterns.";
+            if (!warnings.isEmpty()) {
+                audit.record(user.id(), "PRIVACY_SCAN", id, true, "warnings: " + warnings.size() + " kind(s)");
+            }
+        } else {
+            scanNote = "This file type cannot be scanned for text yet. Check its contents before sharing.";
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("id", id, "name", name, "contentType", type.get().contentType()));
+                .body(Map.of("id", id, "name", name, "contentType", type.get().contentType(),
+                        "privacyNote", scanNote, "privacyWarnings", warnings));
     }
 
     @GetMapping("/{id}/download")
