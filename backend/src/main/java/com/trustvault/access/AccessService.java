@@ -60,6 +60,12 @@ public class AccessService {
             throw new ResponseStatusException(NOT_FOUND);
         }
     }
+        public boolean isOwnerOf(long userId, long documentId) {
+        Integer n = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM documents WHERE id = ? AND owner_id = ? AND deleted = FALSE",
+                Integer.class, documentId, userId);
+        return n != null && n > 0;
+    }
 
     // The list uses the same visibility rule as can(), so search and list cannot show more than downloads allow.
     public List<Map<String, Object>> listVisible(long userId) {

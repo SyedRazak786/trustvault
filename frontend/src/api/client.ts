@@ -159,3 +159,22 @@ export function askAssistant(text: string): Promise<{ answer: string; links: str
     body: JSON.stringify({ text }),
   });
 }
+
+export type TrailEvent = {
+  id: number;
+  created_at: string;
+  actor: string | null;
+  action: string;
+  outcome: "ALLOWED" | "DENIED";
+  detail: string | null;
+};
+
+export type Trail = {
+  documentId: number;
+  events: TrailEvent[];
+  chainIntact: boolean;
+};
+
+export function getTrail(documentId: number): Promise<Trail> {
+  return api<Trail>(`/api/documents/${documentId}/trail`);
+}

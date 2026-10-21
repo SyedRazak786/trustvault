@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, downloadDocument, errorMessage } from "../api/client";
 import { getSession } from "../auth/session";
 import Layout from "../components/Layout";
+import TrustTrail from "../components/TrustTrail";
 import { formatDate, formatSize } from "../lib/format";
 import type { DocRow, Grant } from "../lib/types";
 
@@ -210,6 +211,8 @@ export default function DocumentDetail() {
               </form>
             </section>
           )}
+
+          {isOwner && <TrustTrail documentId={doc.id} />}
 
           {isOwnerRole && !isOwner && sharingNote && <p className="muted">{sharingNote}</p>}
         </>
