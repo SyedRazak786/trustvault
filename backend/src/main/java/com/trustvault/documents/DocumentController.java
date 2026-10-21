@@ -145,6 +145,11 @@ public class DocumentController {
 
         audit.record(user.id(), "DOWNLOAD", id, true, "downloaded");
 
+        // Smart File Capsule: count this download against the recipient's grant, so a download limit
+        // is enforced on the server. Owners have no grant row, so this changes nothing for them.
+        jdbc.update("UPDATE grants SET downloads_used = downloads_used + 1 WHERE document_id = ? AND user_id = ?",
+                id, user.id());
+
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType((String) doc.get("content_type")))
                 .header(HttpHeaders.CONTENT_DISPOSITION,

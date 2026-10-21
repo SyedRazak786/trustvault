@@ -1,9 +1,10 @@
 package com.trustvault.access;
 
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
 import java.util.List;
 import java.util.Map;
 
-import static org.springframework.http.HttpStatus.NOT_FOUND;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,7 +25,9 @@ public class AccessService {
     }
 
     // Read from MySQL on every call, so a revoked grant stops working immediately.
-    // The owner has full rights. EDIT includes READ. Inactive users and deleted documents are refused.
+    // The owner has full rights and is never limited by a capsule. EDIT includes READ.
+    // A grant can carry an expiry and a download limit (the Smart File Capsule); once either is reached,
+    // the grant stops working. Inactive users and deleted documents are refused.
     public boolean can(long userId, long documentId, Permission needed) {
         Integer n = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM documents d
@@ -34,7 +37,9 @@ public class AccessService {
                     OR EXISTS (
                         SELECT 1 FROM grants g
                         WHERE g.document_id = d.id AND g.user_id = u.id
-                          AND (g.permission = 'EDIT' OR ? = 'READ')))""",
+                          AND (g.permission = 'EDIT' OR ? = 'READ')
+                          AND (g.expires_at IS NULL OR g.expires_at > CURRENT_TIMESTAMP)
+                          AND (g.download_limit IS NULL OR g.downloads_used < g.download_limit)))""",
                 Integer.class, userId, documentId, needed.name());
         return n != null && n > 0;
     }
@@ -48,7 +53,7 @@ public class AccessService {
         }
     }
 
-    // Only the owner may grant, revoke or view grants. A grant holder with EDIT cannot share further.
+    // Only the owner may grant, revoke, view grants or set capsule conditions. A grant holder cannot share further.
     public void requireOwner(long userId, long documentId, String action) {
         Integer n = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM documents d
@@ -60,7 +65,9 @@ public class AccessService {
             throw new ResponseStatusException(NOT_FOUND);
         }
     }
-        public boolean isOwnerOf(long userId, long documentId) {
+
+    // True only for the owner of an active document. Used where the owner alone may see something.
+    public boolean isOwnerOf(long userId, long documentId) {
         Integer n = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM documents WHERE id = ? AND owner_id = ? AND deleted = FALSE",
                 Integer.class, documentId, userId);
@@ -75,7 +82,11 @@ public class AccessService {
                 JOIN users u ON u.id = ? AND u.active = TRUE
                 WHERE d.deleted = FALSE AND (
                     d.owner_id = u.id
-                    OR EXISTS (SELECT 1 FROM grants g WHERE g.document_id = d.id AND g.user_id = u.id))
+                    OR EXISTS (
+                        SELECT 1 FROM grants g
+                        WHERE g.document_id = d.id AND g.user_id = u.id
+                          AND (g.expires_at IS NULL OR g.expires_at > CURRENT_TIMESTAMP)
+                          AND (g.download_limit IS NULL OR g.downloads_used < g.download_limit)))
                 ORDER BY d.created_at DESC""", userId);
     }
 }
