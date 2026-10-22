@@ -1,42 +1,55 @@
 # Prompts log
 
-This file records how AI was used, where it went wrong, and what was done instead. Each entry links to the commit that fixed the problem. Replace the placeholder commit links with your real ones.
+This file records how AI was used, where it went wrong, and what was done instead. Each entry links to the commit that fixed the problem.
 
-## 2026-10-19: Security core scaffolding
-- **Asked:** Build a Spring Boot download endpoint with a single authorisation check and an append-only audit trail.
-- **Produced:** A download controller that checked the grant inside the controller, and an audit table with no triggers.
-- **Wrong:** The check lived in the controller, so any new endpoint could skip it. The audit table could be updated by the application account.
-- **Fixed:** Moved the decision into `AccessService.require`, added triggers that block UPDATE and DELETE, and added a test that fails when the check is removed.
-- **Commit:** `<link>`
+## 2026-10-19: Login and token design
+- **Asked:** Add login that checks BCrypt hashes, issues a short-lived token, and records every attempt in the audit log.
+- **Produced:** A login that returned a different message for an unknown email than for a wrong password, and did not record refusals.
+- **Wrong:** The message told an attacker whether an email existed. Refused attempts were not logged, which is the evidence the brief asks for.
+- **Fixed:** Both cases return the same 401 message, and every refusal is written to the audit log with its reason. Verified by querying `audit_log` after correct and wrong logins.
+- **Commit:** `<hash>`
 
-## 2026-10-19: Access-check bypass in list and search
-- **Asked:** Add a document list and search endpoint.
-- **Produced:** A query that filtered by owner or grant, but did not check `users.active` or the deleted flag.
-- **Wrong:** Deactivated users and deleted documents still appeared in results.
-- **Fixed:** Shared one visibility rule between list, search and `AccessService`, and added tests for both cases.
-- **Commit:** `<link>`
+## 2026-10-19: Token checking pasted into the wrong file
+- **Asked:** Add token checking, which required editing several files.
+- **Produced:** Code for `JwtService` was placed inside `AuthController.java`, causing a duplicate-class compile error.
+- **Wrong:** The same class in two files, from an unclear instruction about where each file belonged.
+- **Fixed:** Restored `AuthController.java` to the controller alone and put `JwtService` in its own file. Checked each file with `Select-String` before rebuilding.
+- **Commit:** `<hash>`
 
-## 2026-10-19: Audit writes not covering denials
-- **Asked:** Add audit logging to the download and delete endpoints.
-- **Produced:** Audit entries only for successful actions.
-- **Wrong:** Refused attempts, which are the most useful evidence, were not recorded.
-- **Fixed:** `AccessService.require` records every denial before returning 404. Added `refusedAttemptIsRecordedInAudit` test.
-- **Commit:** `<link>`
+## 2026-10-20: Refusals returned 401 instead of 404
+- **Asked:** Make a refused document request return 404, the same answer as a missing document.
+- **Produced:** A controller that threw 404, which the security filter changed to 401.
+- **Wrong:** The brief requires one answer for both cases. A 401 also suggested a token problem rather than a permissions one.
+- **Fixed:** Allowed the error path through the security rules, so the 404 reaches the caller. Confirmed with curl.
+- **Commit:** `<hash>`
 
-## 2026-10-19: Upload validation trusted the declared content type
-- **Asked:** Add a file upload endpoint.
-- **Produced:** Stored the client-declared Content-Type and used the original filename as the storage path.
-- **Wrong:** A file could be an executable labelled as a PDF. A crafted filename could escape the storage directory.
-- **Fixed:** Magic-byte check against the declared type, server-generated storage keys, and a path containment check. Added `UploadValidationTest`.
-- **Commit:** `<link>`
+## 2026-10-20: PowerShell wrote text into a Java file
+- **Asked:** Write the access service file from a PowerShell here-string.
+- **Produced:** A file with PowerShell text mixed into the Java, causing compile errors.
+- **Wrong:** The closing line of the here-string was included in the file.
+- **Fixed:** Replaced the file in the editor, checked for stray lines with `Select-String`, and rebuilt.
+- **Commit:** `<hash>`
 
-## 2026-10-19: Token contained permissions
-- **Asked:** Add login and put the user's grants in the JWT for speed.
-- **Produced:** Tokens that carried a list of document IDs.
-- **Wrong:** Revoking a grant would not take effect until the token expired.
-- **Fixed:** Tokens carry only the user ID and role. Grants are read from the database on every request. Added `RevocationTest`.
-- **Commit:** `<link>`
+## 2026-10-20: Cross-user tests that needed the check to fail
+- **Asked:** Write tests that fail when the authorisation check is removed.
+- **Produced:** Tests that depended on test users created in the wrong order.
+- **Fixed:** Verified by commenting out the check: four of six tests failed, which shows they depend on the check. Restored it, and all six pass.
+- **Commit:** `<hash>`
+
+## 2026-10-21: Missing download counter
+- **Asked:** Enforce a download limit from the owner's capsule.
+- **Produced:** A download endpoint that never counted downloads, so the limit was not enforced.
+- **Wrong:** The counter line had been dropped in a rewrite, and the test showed the second download succeeding.
+- **Fixed:** Restored the counter after an allowed download, and tested: the second download returned 404.
+- **Commit:** `<hash>`
+
+## 2026-10-22: Mail refused by the certificate check
+- **Asked:** Send email through the Brevo mail service.
+- **Produced:** A mailer that logged only the exception type, so the real reason was hidden.
+- **Wrong:** The log hid the cause, which was a TLS certificate the Java runtime did not trust on this computer.
+- **Fixed:** Logged the mail server's reason, then set a development-only trust setting for the Brevo host, recorded for removal before deployment.
+- **Commit:** `<hash>`
 
 ## Reusable context and instructions
-- Standing instruction given to the tool: "Never place an authorisation check in a controller. Every decision goes through AccessService and every refusal is audited."
-- Review checklist applied to all AI output: Does every route to document data pass through AccessService? Does the test fail when the check is removed? Can the app account change audit rows?
+- Standing rule given to the tool: every document decision goes through `AccessService`, and every refusal is audited.
+- Checklist applied to AI output: does every route to document data pass through `AccessService`, does the test fail with the check removed, can the application account change audit rows, does any message carry file names or contents, and does any secret appear in a committed file.
