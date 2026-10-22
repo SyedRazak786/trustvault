@@ -1,4 +1,7 @@
+
 import { getSession, setSession, type Session } from "../auth/session";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 export class ApiError extends Error {
   status: number;
@@ -9,84 +12,134 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
   const response = await send(path, init);
+
   if (response.status === 204) {
     return undefined as T;
   }
+
   return (await response.json()) as T;
 }
 
-export function login(email: string, password: string): Promise<Session> {
+export function login(
+  email: string,
+  password: string
+): Promise<Session> {
   return api<Session>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
 }
 
-export function uploadDocument(file: File, category: string): Promise<{ id: number; name: string }> {
+export function uploadDocument(
+  file: File,
+  category: string
+): Promise<{ id: number; name: string }> {
   const form = new FormData();
   form.append("file", file);
+
   if (category) {
     form.append("category", category);
   }
-  return api("/api/documents", { method: "POST", body: form });
+
+  return api("/api/documents", {
+    method: "POST",
+    body: form,
+  });
 }
 
-// Fetches the file with the token and saves it, because a plain link cannot send the Authorization header.
-export async function downloadDocument(id: number, name: string): Promise<void> {
+// Fetches the file with the token and saves it,
+// because a plain link cannot send the Authorization header.
+export async function downloadDocument(
+  id: number,
+  name: string
+): Promise<void> {
   const response = await send(`/api/documents/${id}/download`);
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
+
   link.href = url;
   link.download = name;
   document.body.appendChild(link);
   link.click();
   link.remove();
+
   URL.revokeObjectURL(url);
 }
 
 export function errorMessage(err: unknown): string {
-  return err instanceof ApiError ? err.message : "Something went wrong. Try again.";
+  return err instanceof ApiError
+    ? err.message
+    : "Something went wrong. Try again.";
 }
 
-async function send(path: string, init: RequestInit = {}): Promise<Response> {
+async function send(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
   const headers = new Headers(init.headers);
-  if (typeof init.body === "string" && !headers.has("Content-Type")) {
+
+  if (
+    typeof init.body === "string" &&
+    !headers.has("Content-Type")
+  ) {
     headers.set("Content-Type", "application/json");
   }
+
   const session = getSession();
+
   if (session) {
     headers.set("Authorization", `Bearer ${session.token}`);
   }
 
   let response: Response;
+
   try {
-    response = await fetch(path, { ...init, headers });
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers,
+    });
   } catch {
-    throw new ApiError(0, "The server cannot be reached. Check that the backend is running.");
+    throw new ApiError(
+      0,
+      "The server cannot be reached. Check that the backend is running."
+    );
   }
 
   if (response.status === 401 && session) {
-    // The token has expired or was rejected, so the user must sign in again.
+    // The token has expired or was rejected,
+    // so the user must sign in again.
     setSession(null);
   }
+
   if (!response.ok) {
-    throw new ApiError(response.status, await readError(response));
+    throw new ApiError(
+      response.status,
+      await readError(response)
+    );
   }
+
   return response;
 }
 
-async function readError(response: Response): Promise<string> {
+async function readError(
+  response: Response
+): Promise<string> {
   try {
     const body = await response.json();
+
     if (body && typeof body.error === "string") {
       return body.error;
     }
   } catch {
-    // The body was not JSON, so fall back to a message for the status.
+    // The body was not JSON, so fall back to a message.
   }
+
   return statusMessage(response.status);
 }
 
@@ -115,7 +168,11 @@ export type Profile = {
   phone: string | null;
 };
 
-export function signup(email: string, password: string, displayName: string): Promise<{ id: number }> {
+export function signup(
+  email: string,
+  password: string,
+  displayName: string
+): Promise<{ id: number }> {
   return api("/api/auth/signup", {
     method: "POST",
     body: JSON.stringify({ email, password, displayName }),
@@ -126,35 +183,48 @@ export function getProfile(): Promise<Profile> {
   return api<Profile>("/api/account/me");
 }
 
-export function updateProfile(displayName: string, phone: string): Promise<Profile> {
+export function updateProfile(
+  displayName: string,
+  phone: string
+): Promise<Profile> {
   return api<Profile>("/api/account/me", {
     method: "PUT",
     body: JSON.stringify({ displayName, phone }),
   });
 }
 
-export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+export function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
   return api<void>("/api/account/password", {
     method: "POST",
     body: JSON.stringify({ currentPassword, newPassword }),
   });
 }
 
-export function requestPasswordReset(email: string): Promise<{ message: string }> {
+export function requestPasswordReset(
+  email: string
+): Promise<{ message: string }> {
   return api("/api/auth/reset/request", {
     method: "POST",
     body: JSON.stringify({ email }),
   });
 }
 
-export function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+export function confirmPasswordReset(
+  token: string,
+  newPassword: string
+): Promise<void> {
   return api<void>("/api/auth/reset/confirm", {
     method: "POST",
     body: JSON.stringify({ token, newPassword }),
   });
 }
 
-export function askAssistant(text: string): Promise<{ answer: string; links: string[] }> {
+export function askAssistant(
+  text: string
+): Promise<{ answer: string; links: string[] }> {
   return api("/api/assistant/chat", {
     method: "POST",
     body: JSON.stringify({ text }),
@@ -176,7 +246,9 @@ export type Trail = {
   chainIntact: boolean;
 };
 
-export function getTrail(documentId: number): Promise<Trail> {
+export function getTrail(
+  documentId: number
+): Promise<Trail> {
   return api<Trail>(`/api/documents/${documentId}/trail`);
 }
 
@@ -186,6 +258,8 @@ export type Verification = {
   result: string;
 };
 
-export function verifyDocument(id: number): Promise<Verification> {
+export function verifyDocument(
+  id: number
+): Promise<Verification> {
   return api<Verification>(`/api/documents/${id}/verify`);
 }
