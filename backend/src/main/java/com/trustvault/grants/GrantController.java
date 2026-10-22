@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.trustvault.access.AccessService;
 import com.trustvault.audit.AuditService;
 import com.trustvault.auth.AuthUser;
+import com.trustvault.notify.Mailer;
 
 @RestController
 @RequestMapping("/api/documents/{id}/grants")
@@ -33,11 +34,13 @@ public class GrantController {
     private final JdbcTemplate jdbc;
     private final AccessService access;
     private final AuditService audit;
+    private final Mailer mailer;
 
-    public GrantController(JdbcTemplate jdbc, AccessService access, AuditService audit) {
+    public GrantController(JdbcTemplate jdbc, AccessService access, AuditService audit, Mailer mailer) {
         this.jdbc = jdbc;
         this.access = access;
         this.audit = audit;
+        this.mailer = mailer;
     }
 
     // Owner only: who currently has access to this document.
@@ -53,6 +56,8 @@ public class GrantController {
     }
 
     // Owner only: give a user READ or EDIT. Granting again changes the permission.
+    // The recipient is then emailed that a file has been shared. The email names no file and holds no contents,
+    // and a failed email never undoes the share.
     @PostMapping
     public ResponseEntity<?> grant(@AuthenticationPrincipal AuthUser user, @PathVariable long id,
                                    @RequestBody GrantRequest request) {
@@ -81,6 +86,15 @@ public class GrantController {
                 id, target, permission, user.id());
 
         audit.record(user.id(), "GRANT", id, true, permission + " to user " + target);
+
+        // Tell the recipient to sign in. No file name and no contents go in the email.
+        String recipientEmail = jdbc.queryForObject("SELECT email FROM users WHERE id = ?", String.class, target);
+        boolean notified = mailer.send(recipientEmail,
+                "A file has been shared with you on TrustVault",
+                "Someone has shared a document with you. Sign in to TrustVault to view it.\n\n"
+                + "This message does not include the document or its name.");
+        audit.record(user.id(), "NOTIFY_SHARE", id, notified,
+                notified ? "share notification sent" : "share notification not sent");
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("documentId", id, "userId", target, "permission", permission));
