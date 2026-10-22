@@ -1,60 +1,88 @@
 # API reference
 
-Every endpoint except `POST /api/auth/login` needs a signed token in the header:
+Every endpoint except the public ones needs a signed token:
 
-Tokens last 15 minutes and contain only the user's ID and role. The server reads the user's grants from the database on every request, so access changes take effect at once, without a new token.
+Tokens last 15 minutes and contain only the user's ID and role. Grants are read from the database on every request, so access changes take effect at once.
 
-The "Who may call" column describes the rule the server enforces. The screens hide controls a role cannot use, but that is cosmetic only.
+"Who may call" is the rule the server enforces. The screens hide controls a role cannot use, but that is cosmetic only.
 
-## Authentication
+## Public (no sign-in)
 
-| Method | Path | Who may call | Purpose | Responses |
-|--------|------|--------------|---------|-----------|
-| POST | `/api/auth/login` | Anyone | Exchange email and password for a token | 200 with `token`, `email`, `role`. 401 for an unknown email, a wrong password, or an inactive account (same message in all three). 400 if fields are missing. Every attempt is audited. |
-| GET | `/api/auth/me` | Any signed-in user | Return the caller's ID and role | 200 with `id`, `role`. 401 without a valid token. |
+| Method | Path | Purpose | Responses |
+|--------|------|---------|-----------|
+| POST | `/api/auth/login` | Exchange email and password for a token | 200 with `token`, `email`, `role`. 401 for an unknown email, a wrong password or an inactive account (same message). |
+| POST | `/api/auth/signup` | Create an account. Always an OWNER; any role sent is ignored. | 201. 400 for an invalid email or a password outside 12 to 128 characters. 409 if the email is registered. |
+| POST | `/api/auth/reset/request` | Ask for a reset link. Same reply for any email. | 200 with a generic message. |
+| POST | `/api/auth/reset/confirm` | Set a new password with a one-time token | 204. 400 for an invalid, used or expired token. |
+| POST | `/api/assistant/chat` | Ask the assistant a question. Holds no secrets and changes no data. | 200 with `answer` and `links`. |
+
+## Account (any signed-in user)
+
+| Method | Path | Purpose | Responses |
+|--------|------|---------|-----------|
+| GET | `/api/auth/me` | The caller's ID and role | 200 |
+| GET | `/api/account/me` | Read the caller's profile | 200 with `id`, `email`, `role`, `display_name`, `phone` |
+| PUT | `/api/account/me` | Update display name and phone. Email and role cannot be changed. | 200. 400 for an invalid phone. |
+| POST | `/api/account/password` | Change the password. Needs the current password. | 204. 400 if the current password is wrong or the new one is too short. |
 
 ## Documents
 
 | Method | Path | Who may call | Purpose | Responses |
 |--------|------|--------------|---------|-----------|
-| GET | `/api/documents` | Any signed-in user | List documents the caller owns or holds a grant for, newest first | 200 with rows of `id`, `name`, `category`, `content_type`, `size_bytes`, `created_at`. Deleted documents and documents with no grant never appear. |
-| POST | `/api/documents` | Owner only | Upload a file (multipart field `file`, optional `category`) | 201 with `id`, `name`, `contentType`. 400 if no file. 403 for a non-owner (see note). 413 if over 10 MB. 415 if the bytes are not PDF, PNG, JPEG or plain UTF-8 text. |
-| GET | `/api/documents/{id}/download` | Owner, or a user with a READ or EDIT grant | Download the file | 200 with the file and a `Content-Disposition` attachment header. 404 for a missing, deleted or forbidden document (same body in all cases). |
-| DELETE | `/api/documents/{id}` | Owner only | Soft-delete the document | 204. 404 for a non-owner or a missing document. The file stays on disk (see THREATS.md, A5). |
+| GET | `/api/documents` | Any signed-in user | Documents the caller owns or holds an active grant for | 200. Expired or used-up grants are not listed. |
+| POST | `/api/documents` | Owner | Upload a file (`file`, optional `category`) | 201 with `id`, `name`, `contentType`, `privacyNote`, `privacyWarnings`. 403 for non-owners. 413 over 10 MB. 415 for a type not allowed. |
+| GET | `/api/documents/{id}/download` | Owner, or an active grant | Download the file. Counts against a download limit. | 200. 404 for missing, deleted, forbidden, exhausted or integrity-failed documents (same body). |
+| GET | `/api/documents/{id}/verify` | Owner, or an active grant | File DNA: check the stored file against its upload fingerprint. Does not count as a download. | 200 with `intact` and `result`. 404 if forbidden. |
+| GET | `/api/documents/{id}/trail` | Owner or administrator | Trust Trail: the document's events and whether the record is intact | 200 with `events` and `chainIntact`. 404 for anyone else. |
+| DELETE | `/api/documents/{id}` | Owner | Soft-delete the document | 204. 404 for non-owners. |
 
-## Grants (sharing)
+## Sharing and capsule
 
 | Method | Path | Who may call | Purpose | Responses |
 |--------|------|--------------|---------|-----------|
-| GET | `/api/documents/{id}/grants` | Owner only | List who has access, and at what level | 200 with rows of `user_id`, `email`, `permission`, `granted_by`. 404 for anyone else. |
-| POST | `/api/documents/{id}/grants` | Owner only | Give an active user READ or EDIT. Repeating the call changes the permission. Body: `{"email": "...", "permission": "READ"}` | 201 with `documentId`, `userId`, `permission`. 400 for an unknown or inactive email, or a permission other than READ or EDIT. 404 for a non-owner. |
-| DELETE | `/api/documents/{id}/grants/{userId}` | Owner only | Remove a user's access. Takes effect on that user's next request. | 204. 404 if the caller is not the owner, or there is no such grant. |
+| GET | `/api/shares` | Any signed-in user | Documents other owners have shared with the caller | 200 |
+| GET | `/api/documents/{id}/grants` | Owner | Who has access, with capsule conditions | 200 |
+| POST | `/api/documents/{id}/grants` | Owner | Share with an active user as READ or EDIT. The recipient is emailed a notice that names no file. Body: `email`, `permission`. | 201. 400 for an unknown email or a bad permission. 404 for non-owners. |
+| PATCH | `/api/documents/{id}/grants/{userId}` | Owner | Smart File Capsule: set `expiresAt` (ISO date-time or null) and `downloadLimit` (1 or more, or null) | 200. 404 if there is no grant. |
+| DELETE | `/api/documents/{id}/grants/{userId}` | Owner | Remove access. Takes effect on the next request. | 204 |
+
+## Autopilot
+
+| Method | Path | Who may call | Purpose | Responses |
+|--------|------|--------------|---------|-----------|
+| POST | `/api/autopilot/propose` | Owner | Turn a plain request into a proposed action. Changes nothing. | 200 with `summary`, `action` and `token`, or a question if the request is unclear. 404 for non-owners. |
+| POST | `/api/autopilot/confirm` | Owner | Run a proposed action after the owner confirms. Same rules as the normal endpoints. | 200 with `done`. 403 if the proposal belongs to someone else. 404 if not owner. |
 
 ## Administration
 
-Administrator endpoints return 403 with `Administrators only.` for any other role. The refusal is written to the audit log.
+Administrator endpoints return 403 with "Administrators only." for other roles. Every refusal is audited.
 
-| Method | Path | Who may call | Purpose | Responses |
-|--------|------|--------------|---------|-----------|
-| GET | `/api/admin/documents?q=` | Administrator only | Document metadata: name, owner, category, size, dates, status. The optional `q` matches name or category. No contents, no download links. Audited as `ADMIN_VIEW_DOCUMENTS`. | 200, at most 500 rows. |
-| GET | `/api/admin/activity?limit=` | Administrator only | Recent audit entries across the system | 200. `limit` is 1 to 500, default 100. |
-| GET | `/api/admin/permissions?limit=` | Administrator only | Grant and revoke entries only | 200. Same `limit` rules. |
-| GET | `/api/admin/audit/verify` | Administrator only | Recompute the audit hash chain | 200 with `intact`, `rowsChecked`, `firstBadId`. |
+| Method | Path | Purpose | Responses |
+|--------|------|---------|-----------|
+| GET | `/api/admin/documents?q=` | Document metadata only: name, owner, category, size, dates. No contents. | 200 |
+| GET | `/api/admin/activity?limit=` | Recent audit entries | 200 |
+| GET | `/api/admin/permissions?limit=` | Grant and revoke entries | 200 |
+| GET | `/api/admin/audit/verify` | Recompute the audit hash chain | 200 with `intact`, `rowsChecked`, `firstBadId` |
+| GET | `/api/admin/reset-queue` | Pending password reset requests, without tokens | 200 |
+| POST | `/api/admin/reset-queue/{id}/delivered` | Mark a reset as delivered by support. Does not change a password. | 204. 404 if not pending or already marked. |
+| POST | `/api/admin/mail-test` | Send one test email to check mail | 200 with `sent` |
 
 ## Error responses
 
 | Status | Meaning |
 |--------|---------|
-| 400 | The request is malformed or missing a required field. |
-| 401 | No token, an invalid or expired token, or a failed sign-in. |
-| 403 | The role is not allowed to perform this action at all (upload by a non-owner, admin endpoints by a non-admin). |
-| 404 | A document is missing, deleted, or not visible to the caller. Deliberately the same for all three. |
-| 413 | The uploaded file is larger than 10 MB. |
-| 415 | The file's content is not an allowed type. |
+| 400 | Malformed request or a missing field |
+| 401 | No token, or an invalid or expired token |
+| 403 | The role is not allowed to do this at all |
+| 404 | Missing, deleted, not visible, exhausted, or integrity-failed. Deliberately the same body for all. |
+| 409 | Email already registered (sign-up) |
+| 413 | File over 10 MB |
+| 415 | File type not allowed |
 
 ## Notes
 
-- **403 on upload.** A viewer calling `POST /api/documents` gets 403, not 404, because no document exists yet, so there is nothing to conceal. This is recorded in THREATS.md as accepted risk A2.
-- **File type.** The server decides the type from the file's bytes, never from its name or the browser's declared type.
-- **No single-document read.** There is no `GET /api/documents/{id}` endpoint yet. The screens find a document in the visible list. This is a known gap, listed in WRITEUP.md.
-- **Audit.** Every request above that changes state, and every refusal, is recorded in `audit_log` with the actor, action, document and reason.
+- **File type** is decided from the file's bytes, never its name.
+- **Privacy Guardian** scans text uploads only. PDFs and images are not scanned, and the response says so.
+- **Verify and download** use the same access rule. Verify does not count against a download limit.
+- **No single-document read endpoint** yet. The screens find a document in the visible list.
+- **Audit**: every state change and every refusal is recorded.
