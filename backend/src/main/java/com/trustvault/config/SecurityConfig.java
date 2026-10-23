@@ -24,20 +24,22 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, JwtService jwt) throws Exception {
         http
-            // Browsers on these addresses may call the API. Nothing else may.
             .cors(Customizer.withDefaults())
             // Tokens travel in a header, not a cookie, so CSRF protection is not needed.
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // Missing or invalid token: answer 401, not the default 403.
+            // Missing or invalid token on an API call: answer 401, not the default 403.
             .exceptionHandling(e -> e.authenticationEntryPoint(
                     (request, response, ex) -> response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints: sign-in, sign-up, password reset, and the assistant.
+                // Public API endpoints: sign-in, sign-up, password reset, and the assistant.
                 .requestMatchers("/api/auth/login", "/api/auth/signup",
                         "/api/auth/reset/request", "/api/auth/reset/confirm",
                         "/api/assistant/chat", "/error").permitAll()
-                .anyRequest().authenticated())
+                // Every other API call needs a valid token. The rules of each endpoint still apply.
+                .requestMatchers("/api/**").authenticated()
+                // The website itself: its start page, its files and its page routes. These hold no data.
+                .anyRequest().permitAll())
             .addFilterBefore(new JwtAuthFilter(jwt), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
@@ -47,7 +49,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
-                "https://trustvault-frontend-rxj1.onrender.com"));
+                "https://trustvault-cuaz.onrender.com"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
